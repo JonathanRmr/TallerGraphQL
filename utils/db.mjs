@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGO_URI = 'mongodb+srv://pepe:CvuPs1L4s2dFj8D9@cluster0.skff2mq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGODB_URI;
 const DB_NAME = 'online_store';
 
 export const connectDB = async () => {
