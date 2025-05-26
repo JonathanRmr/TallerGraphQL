@@ -5,7 +5,7 @@ import { Order } from '../models/Order.mjs';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
-const SECRET_KEY = 'mi_clave_secreta_super_segura';
+const SECRET_KEY = process.env.SECRET_KEY|| 'mi_clave_secreta_super_segura';;
 
 export const resolvers = {
     Query: {
