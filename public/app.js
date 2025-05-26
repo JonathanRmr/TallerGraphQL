@@ -13,7 +13,10 @@ const sendQuery = async (query, variables = {}) => {
         body: JSON.stringify({ query, variables })
     });
     const result = await response.json();
-    if (result.errors) alert(result.errors[0].message);
+    if (result.errors) {
+        console.error('GraphQL Error:', result.errors);
+        alert(result.errors[0].message);
+    }
     return result.data;
 };
 
@@ -25,14 +28,19 @@ function updateUI() {
     const isLoggedIn = !!token;
     document.getElementById('authSection').classList.toggle('hidden', isLoggedIn);
     document.getElementById('appSection').classList.toggle('hidden', !isLoggedIn);
-    document.getElementById('authControls').style.display = isLoggedIn ? 'block' : 'none';
-    const name = localStorage.getItem('userName');
-    document.getElementById('welcomeMessage').textContent = isLoggedIn
-        ? `Welcome, ${name} (${role})`
-        : 'GraphQL + MongoDB + JWT';
-    document.getElementById('adminPanel').classList.toggle('hidden', role !== 'admin');
-    document.getElementById('clientPanel').classList.toggle('hidden', role !== 'client');
+    document.getElementById('authControls').style.display = isLoggedIn ? 'flex' : 'none';
+    
     if (isLoggedIn) {
+        const name = localStorage.getItem('userName');
+        const userInitial = name ? name.charAt(0).toUpperCase() : 'U';
+        document.getElementById('welcomeMessage').innerHTML = `
+            <div class="user-avatar">${userInitial}</div>
+            <span>Welcome, ${name} (${role})</span>
+        `;
+        
+        document.getElementById('adminPanel').classList.toggle('hidden', role !== 'admin');
+        document.getElementById('clientPanel').classList.toggle('hidden', role !== 'client');
+        
         if (role === 'admin') {
             fetchAllProducts();
         }
@@ -47,7 +55,13 @@ async function register() {
     const name = document.getElementById('authName').value;
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
-    const userRole = prompt("Enter role: admin or client", "client");
+    const userRole = prompt("Select your role:\n• admin - Manage products\n• client - Place orders", "client");
+    
+    if (!name || !email || !password) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
     const data = await sendQuery(`
         mutation($name: String!, $email: String!, $password: String!, $role: String) {
             registerUser(name: $name, email: $email, password: $password, role: $role) {
@@ -56,6 +70,7 @@ async function register() {
             }
         }
     `, { name, email, password, role: userRole });
+    
     if (data?.registerUser) {
         token = data.registerUser.token;
         role = data.registerUser.user.role;
@@ -71,6 +86,12 @@ async function register() {
 async function login() {
     const email = document.getElementById('authEmail').value;
     const password = document.getElementById('authPassword').value;
+    
+    if (!email || !password) {
+        alert('Please enter your email and password');
+        return;
+    }
+    
     const data = await sendQuery(`
         mutation($email: String!, $password: String!) {
             loginUser(email: $email, password: $password) {
@@ -79,6 +100,7 @@ async function login() {
             }
         }
     `, { email, password });
+    
     if (data?.loginUser) {
         token = data.loginUser.token;
         role = data.loginUser.user.role;
@@ -100,18 +122,25 @@ function logout() {
 }
 
 async function updateProductSelect() {
-    const data = await sendQuery(`query { products { id name stock } }`);
+    const data = await sendQuery(`query { products { id name stock price } }`);
     const select = document.getElementById('orderProductSelect');
-    select.innerHTML = '';
+    select.innerHTML = '<option value="">Select a product...</option>';
+    
     data.products.forEach(p => {
-        select.innerHTML += `<option value="${p.id}">${p.name} (${p.stock})</option>`;
+        select.innerHTML += `<option value="${p.id}">${p.name} - $${p.price} (${p.stock} available)</option>`;
     });
 }
 
 async function createOrder() {
     const productId = document.getElementById('orderProductSelect').value;
     const quantity = parseInt(document.getElementById('orderQuantity').value);
-    await sendQuery(`
+    
+    if (!productId || !quantity) {
+        alert('Please select a product and quantity');
+        return;
+    }
+    
+    const data = await sendQuery(`
         mutation($items: [OrderItemInput!]!) {
             createOrder(items: $items) {
                 id
@@ -120,48 +149,81 @@ async function createOrder() {
     `, {
         items: [{ productId, quantity }]
     });
-    alert('Order placed!');
-    await fetchOrders();
-    await updateProductSelect();
+    
+    if (data?.createOrder) {
+        alert('🎉 Order placed successfully!');
+        await fetchOrders();
+        await updateProductSelect();
+        document.getElementById('orderQuantity').value = '';
+    }
 }
 
 async function createProduct() {
     const name = document.getElementById('adminProductName').value;
     const price = parseFloat(document.getElementById('adminProductPrice').value);
     const stock = parseInt(document.getElementById('adminProductStock').value);
-    await sendQuery(`
+    
+    if (!name || !price || !stock) {
+        alert('Please fill in all product details');
+        return;
+    }
+    
+    const data = await sendQuery(`
         mutation($name: String!, $price: Float!, $stock: Int!) {
             createProduct(name: $name, price: $price, stock: $stock) {
                 id
             }
         }
     `, { name, price, stock });
-    alert('Product created');
-    fetchAllProducts();
+    
+    if (data?.createProduct) {
+        alert('✅ Product created successfully!');
+        document.getElementById('adminProductName').value = '';
+        document.getElementById('adminProductPrice').value = '';
+        document.getElementById('adminProductStock').value = '';
+        fetchAllProducts();
+    }
 }
 
 async function fetchAllProducts() {
     const data = await sendQuery(`query { products { id name price stock } }`);
     const list = document.getElementById('productListAdmin');
     list.innerHTML = '';
+    
     data.products.forEach(p => {
-        list.innerHTML += `
-            <li>
-                <b>${p.name}</b> - $${p.price} | Stock: ${p.stock}
-                <button onclick="deleteProduct('${p.id}')">❌</button>
-            </li>
+        const li = document.createElement('li');
+        li.className = 'product-item';
+        li.innerHTML = `
+            <div class="product-info">
+                <div class="product-name">
+                    <i class="fas fa-microchip"></i> ${p.name}
+                </div>
+                <div class="product-details">
+                    Stock: ${p.stock} units available
+                </div>
+            </div>
+            <div class="product-price">$${p.price}</div>
+            <button class="delete-btn" onclick="deleteProduct('${p.id}')" title="Delete Product">
+                <i class="fas fa-trash"></i>
+            </button>
         `;
+        list.appendChild(li);
     });
 }
 
 async function deleteProduct(id) {
-    await sendQuery(`
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
+    const data = await sendQuery(`
         mutation($id: ID!) {
             deleteProduct(id: $id)
         }
     `, { id });
-    alert('Product deleted');
-    fetchAllProducts();
+    
+    if (data?.deleteProduct) {
+        alert('🗑️ Product deleted successfully!');
+        fetchAllProducts();
+    }
 }
 
 async function fetchOrders() {
@@ -169,7 +231,35 @@ async function fetchOrders() {
         ? `query { orders { id date user { name } items { product { name } quantity } } }`
         : `query($userId: ID!) { ordersByUser(userId: $userId) { id date items { product { name } quantity } user { name } } }`;
     const variables = role === 'client' ? { userId } : undefined;
+    
     const data = await sendQuery(query, variables);
     const orders = role === 'admin' ? data.orders : data.ordersByUser;
-    document.getElementById('ordersList').textContent = JSON.stringify(orders, null, 2);
+    
+    const container = document.getElementById('ordersList');
+    if (!orders || orders.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No orders found</p>';
+        return;
+    }
+    
+    container.innerHTML = orders.map(order => `
+        <div style="background: var(--dark-card); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--accent);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <strong style="color: var(--accent);">
+                    <i class="fas fa-receipt"></i> Order #${order.id.substr(-6)}
+                </strong>
+                <span style="color: var(--text-secondary);">${new Date(order.date).toLocaleDateString()}</span>
+            </div>
+            ${role === 'admin' ? `<p><i class="fas fa-user"></i> Customer: ${order.user.name}</p>` : ''}
+            <div style="margin-top: 10px;">
+                <strong>Items:</strong>
+                <ul style="margin: 10px 0; list-style: none;">
+                    ${order.items.map(item => `
+                        <li style="padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fas fa-box"></i> ${item.product.name} × ${item.quantity}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        </div>
+    `).join('');
 }
