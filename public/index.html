@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online Store GraphQL</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🛒 Online Store</h1>
+      <p id="welcomeMessage">GraphQL + MongoDB + JWT + Roles</p>
+      <div id="authControls">
+        <button onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <!-- LOGIN / REGISTRO -->
+    <section id="authSection" class="card">
+      <h2>Login or Register</h2>
+      <input type="text" id="authName" placeholder="Name (for register only)" />
+      <input type="email" id="authEmail" placeholder="Email" />
+      <input type="password" id="authPassword" placeholder="Password" />
+      <button onclick="login()">Login</button>
+      <button onclick="register()">Register</button>
+    </section>
+
+    <!-- PANEL PRINCIPAL -->
+    <main id="appSection" class="grid hidden">
+      
+      <!-- Admin -->
+      <section id="adminPanel" class="card hidden">
+        <h2>Admin Panel: Product Management</h2>
+        <input type="text" id="adminProductName" placeholder="Product Name" />
+        <input type="number" id="adminProductPrice" placeholder="Price" />
+        <input type="number" id="adminProductStock" placeholder="Stock" />
+        <button onclick="createProduct()">Create Product</button>
+
+        <h3>All Products</h3>
+        <ul id="productListAdmin"></ul>
+      </section>
+
+      <!-- Cliente -->
+      <section id="clientPanel" class="card hidden">
+        <h2>Client Panel: Make an Order</h2>
+        <select id="orderProductSelect"></select>
+        <input type="number" id="orderQuantity" placeholder="Quantity" />
+        <button onclick="createOrder()">Place Order</button>
+      </section>
+
+      <!-- Órdenes -->
+      <section class="card full">
+        <h2>📦 Orders</h2>
+        <button onclick="fetchOrders()">Refresh Orders</button>
+        <pre id="ordersList"></pre>
+      </section>
+
+    </main>
+
+    <footer>
+      <p>&copy; 2025 - Online Store GraphQL</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
