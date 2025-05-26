@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:4000/';
+const API_URL = 'https://tallergraphql.onrender.com/';
 let token = localStorage.getItem('token') || null;
 let role = localStorage.getItem('role') || null;
 let userId = localStorage.getItem('userId') || null;
